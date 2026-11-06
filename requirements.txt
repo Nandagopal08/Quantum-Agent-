@@ -1,0 +1,38 @@
+# Quantum Agentic Digital Twin — backend dependencies.
+# Minimum versions; tested with the versions in requirements-lock.txt (Python 3.12, macOS) and installable on
+# Google Colab (packages Colab already ships, e.g. torch/pandas/scikit-learn, are left as installed).
+
+# API
+fastapi>=0.115
+uvicorn[standard]>=0.30
+pydantic>=2.7
+python-multipart>=0.0.9
+sqlalchemy>=2.0
+httpx>=0.27
+
+# data & classical ML
+numpy>=1.26
+pandas>=2.2
+scipy>=1.13
+scikit-learn>=1.5
+xgboost>=2.0
+lightgbm>=4.3
+catboost>=1.2
+torch>=2.2
+shap>=0.45
+matplotlib>=3.8
+pyarrow>=15
+tqdm>=4.60
+py7zr>=0.20          # IMS ships as a .7z inside the ZIP
+
+# quantum
+pennylane>=0.38      # includes the lightning.qubit simulator used for QAOA
+
+# agents
+langchain-core>=0.3
+langgraph>=0.2
+langchain-ollama>=0.2
+langchain-openai>=0.2
+
+# tests
+pytest>=8

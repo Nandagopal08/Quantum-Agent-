@@ -1,0 +1,33 @@
+---
+config:
+  flowchart:
+    curve: linear
+---
+graph TD;
+	__start__([<p>__start__</p>]):::first
+	data_monitoring(data_monitoring)
+	predictive_maintenance(predictive_maintenance)
+	risk_assessment(risk_assessment)
+	digital_twin(digital_twin)
+	counterfactual_reasoning(counterfactual_reasoning)
+	quantum_optimization(quantum_optimization)
+	decision_coordination(decision_coordination)
+	human_approval(human_approval)
+	__end__([<p>__end__</p>]):::last
+	__start__ --> data_monitoring;
+	counterfactual_reasoning -.-> decision_coordination;
+	counterfactual_reasoning -.-> quantum_optimization;
+	data_monitoring -.-> __end__;
+	data_monitoring -.-> predictive_maintenance;
+	decision_coordination -.-> __end__;
+	decision_coordination -.-> human_approval;
+	digital_twin --> counterfactual_reasoning;
+	predictive_maintenance -.-> __end__;
+	predictive_maintenance -.-> risk_assessment;
+	quantum_optimization --> decision_coordination;
+	risk_assessment -.-> decision_coordination;
+	risk_assessment -.-> digital_twin;
+	human_approval --> __end__;
+	classDef default fill:#f2f0ff,line-height:1.2
+	classDef first fill-opacity:0
+	classDef last fill:#bfb6fc
