@@ -12,8 +12,8 @@ vi.mock("../services/api", async (orig) => {
   return { ...real, api: new Proxy({}, { get: (_t, k) => (k.endsWith("Url") ? () => null : fail) }) };
 });
 
-test("sidebar lists all 14 modules", () => {
-  expect(NAV).toHaveLength(14);
+test("sidebar lists all 15 modules", () => {
+  expect(NAV).toHaveLength(15);
 });
 
 test.each(NAV.map((n) => [n.label, n.to]))("%s page renders at %s", async (label, path) => {

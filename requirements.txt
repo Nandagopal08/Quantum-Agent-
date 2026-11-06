@@ -27,6 +27,7 @@ py7zr>=0.20          # IMS ships as a .7z inside the ZIP
 
 # quantum
 pennylane>=0.38      # includes the lightning.qubit simulator used for QAOA
+qiskit>=1.2          # independent execution/verification of the trained circuits (OpenQASM export)
 
 # agents
 langchain-core>=0.3

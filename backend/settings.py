@@ -64,10 +64,65 @@ def get_settings() -> dict:
     return _merge(DEFAULTS, load_config(SETTINGS_NAME, default={}) or {})
 
 
+# Bounds for values whose range matters for safety or resource use (memory, CPU, outbound requests).
+_BOUNDS: dict[str, tuple[float, float]] = {
+    "optimization.max_qubits": (2, 20),            # statevector memory grows as 2^n
+    "optimization.qaoa_layers": (1, 8), "optimization.qaoa_steps": (1, 1000),
+    "optimization.slots": (1, 12), "optimization.crew_capacity_per_slot": (1, 50),
+    "simulation.monte_carlo_samples": (100, 200_000), "simulation.planning_horizon": (1, 2000),
+    "simulation.load_exponent": (0.1, 10), "risk.failure_horizon": (1, 2000),
+    "llm.temperature": (0, 2), "llm.timeout_seconds": (1, 600),
+}
+_ENUMS = {"llm.provider": {"ollama", "openai", "none"},
+          "risk.human_approval_level": {"low", "medium", "high", "critical"}}
+_NON_NEGATIVE_SUFFIXES = ("_cost", "_cost_per_unit", "_downtime", "_per_unit", "criticality", "restoration_fraction")
+
+
+def validate_patch(patch: Any, base: dict = DEFAULTS, prefix: str = "") -> None:
+    """Reject unknown keys, wrong types and out-of-range values (raises ValueError → HTTP 422)."""
+    if not isinstance(patch, dict):
+        raise ValueError(f"{prefix or 'settings'} must be an object")
+    for k, v in patch.items():
+        key = f"{prefix}{k}"
+        if k not in base:
+            raise ValueError(f"unknown setting {key!r}")
+        ref = base[k]
+        if isinstance(ref, dict):
+            validate_patch(v, ref, key + ".")
+            continue
+        if isinstance(ref, bool) or isinstance(v, bool):
+            if not (isinstance(ref, bool) and isinstance(v, bool)):
+                raise ValueError(f"{key} must be {'a boolean' if isinstance(ref, bool) else 'a number'}")
+        elif isinstance(ref, (int, float)):
+            if not isinstance(v, (int, float)) or v != v or v in (float("inf"), float("-inf")):
+                raise ValueError(f"{key} must be a finite number")
+            if isinstance(ref, int) and not isinstance(ref, bool) and key in _BOUNDS and float(v) != int(v):
+                raise ValueError(f"{key} must be an integer")
+            lo, hi = _BOUNDS.get(key, (0 if key.endswith(_NON_NEGATIVE_SUFFIXES) else float("-inf"), float("inf")))
+            if not lo <= v <= hi:
+                raise ValueError(f"{key} must be between {lo:g} and {hi:g}")
+        elif isinstance(ref, str):
+            if not isinstance(v, str) or len(v) > 500:
+                raise ValueError(f"{key} must be a string (≤ 500 characters)")
+            if key in _ENUMS and v not in _ENUMS[key]:
+                raise ValueError(f"{key} must be one of {sorted(_ENUMS[key])}")
+            if key == "llm.base_url":
+                from urllib.parse import urlparse
+
+                u = urlparse(v)
+                if u.scheme not in ("http", "https") or not u.hostname:
+                    raise ValueError("llm.base_url must be an http(s) URL")
+    th = (patch.get("risk") or {}).get("thresholds") if not prefix else None
+    if th:
+        merged = {**DEFAULTS["risk"]["thresholds"], **th}
+        if not 0 < merged["medium"] < merged["high"] < merged["critical"] <= 1:
+            raise ValueError("risk thresholds must satisfy 0 < medium < high < critical ≤ 1")
+
+
 def update_settings(patch: dict) -> dict:
+    validate_patch(patch)
     current = load_config(SETTINGS_NAME, default={}) or {}
     merged = _merge(current, patch)
-    _merge(DEFAULTS, merged)  # raises on structural problems
     save_config(SETTINGS_NAME, merged)
     return get_settings()
 

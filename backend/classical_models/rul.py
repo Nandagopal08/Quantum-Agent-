@@ -103,7 +103,8 @@ def _make_tabular(name: str, seed: int):
     if name == "catboost":
         from catboost import CatBoostRegressor
         return CatBoostRegressor(iterations=1000, depth=6, learning_rate=0.05, random_seed=seed, verbose=False,
-                                 od_type="Iter", od_wait=50, thread_count=-1)
+                                 od_type="Iter", od_wait=50, thread_count=-1,
+                                 allow_writing_files=False)   # no catboost_info/ in the working directory
     raise ValueError(name)
 
 

@@ -1,7 +1,7 @@
 """Command line: ``python -m backend.storage {init,download,verify,status}``.
 
-Mounting needs the notebook kernel, so mount Drive in a cell first
-(``setup_storage()``); these commands then work from ``!python -m ...`` cells.
+In Colab, mount Drive first with ``%run scripts/setup_environment.py``; these commands then work from
+``!python -m backend.storage ...``.
 """
 
 from __future__ import annotations

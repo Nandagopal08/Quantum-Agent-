@@ -14,15 +14,12 @@ export default function StorageManagement() {
         <ErrorBox error={s.error} code={s.code} onRetry={s.reload} />
         <div className="mt-4"><Notice tone="warn">
           <b>How to connect Google Drive</b>
-          <pre className="mt-2 whitespace-pre-wrap text-xs">{`In Colab (recommended): open notebooks/01_run_backend_colab.ipynb — it mounts Drive,
-starts this API and prints a public URL for the dashboard.
+          <pre className="mt-2 whitespace-pre-wrap text-xs">{`In Colab (the notebook is only a terminal for the Python scripts):
+    %run scripts/setup_environment.py        # mounts Drive, installs dependencies
+    !python scripts/run_backend.py --tunnel  # starts this API, prints a private dashboard link
 
-Manually in a Colab cell:
-    from google.colab import drive
-    drive.mount('/content/drive')
-
-If the mount dropped ("Transport endpoint is not connected"):
-    from backend.storage import remount_drive; remount_drive()
+If the mount dropped ("Transport endpoint is not connected"), re-run:
+    %run scripts/setup_environment.py
 
 On a desktop with Google Drive for desktop:
     QADT_STORAGE_MODE=desktop QADT_DRIVE_MOUNT=~/Library/CloudStorage/GoogleDrive-<account>`}</pre>

@@ -9,8 +9,14 @@ export const API_BASE = import.meta.env.VITE_API_URL || "/api";
 const TOKEN_KEY = "qadt_api_token";
 function readToken() {
   try {
-    const fromUrl = new URLSearchParams(window.location.search).get("token");
-    if (fromUrl) localStorage.setItem(TOKEN_KEY, fromUrl);
+    const params = new URLSearchParams(window.location.search);
+    const fromUrl = params.get("token");
+    if (fromUrl) {
+      localStorage.setItem(TOKEN_KEY, fromUrl);
+      params.delete("token");     // keep the secret out of the address bar, history and bookmarks
+      const q = params.toString();
+      window.history.replaceState(null, "", `${window.location.pathname}${q ? `?${q}` : ""}${window.location.hash}`);
+    }
     return fromUrl || localStorage.getItem(TOKEN_KEY) || "";
   } catch { return ""; }
 }
@@ -65,6 +71,15 @@ export const api = {
 
   quantumRun: (body) => post("/quantum/run", body),
   quantumExperiments: () => get("/quantum/experiments"),
+
+  qseqReport: (subset = "FD001") => get("/qseq/report", { subset }),
+  qseqBenchmark: (body) => post("/qseq/benchmark", body),
+  qseqQiskit: (subset = "FD001") => get("/qseq/qiskit", { subset }),
+  qseqStartRun: (body) => post("/qseq/agents/runs", body),
+  qseqAgentStatus: () => get("/qseq/agents/status"),
+  qseqRuns: () => get("/qseq/agents/runs"),
+  qseqRun: (id) => get(`/qseq/agents/runs/${id}`),
+  qseqRunEventsUrl: (id) => withToken(`${API_BASE}/qseq/agents/runs/${id}/events`),
 
   fleet: (subset, model) => get("/fleet/turbofan", { subset, model }),
   bearings: (test, model, as_of) => get("/fleet/bearings", { test, model, as_of }),

@@ -37,9 +37,18 @@
 - [x] 13 Integration and tests
 - [x] 14 Documentation and verified results
 
+## Quantum sequence models and missing data (added 2026-11-06)
+
+- [x] Quantum LSTM, Quantum Transformer, Quantum CNN-LSTM + same-size classical twins ([QUANTUM_SEQUENCE_MODELS.md](QUANTUM_SEQUENCE_MODELS.md))
+- [x] RUL on C-MAPSS FD001 (official test engines), 3 seeds
+- [x] Imputation at 10–50 % missing, MCAR and block outages, vs mean / LOCF / linear; downstream RUL
+- [x] Single-agent LangGraph missing-data workflow (data quality → plan → impute → check with bounded retry → forecast → report); API, CLI and dashboard page
+- [x] Qiskit execution of every trained circuit, verified against PennyLane
+- [x] Python-only execution: notebooks replaced by `scripts/*.py`; single entry point `scripts/run_pipeline.py`
+
 ## Not yet done
 
-- [ ] Run the three Colab notebooks end-to-end in a real Colab runtime with Drive (built and validated here in development mode; Drive was unavailable on the build machine)
+- [ ] Run `scripts/run_pipeline.py` end-to-end in a real Colab runtime with Drive (scripts validated here in development mode; Drive was unavailable on the build machine)
 - [ ] Train and report FD002–FD004
-- [ ] Multi-seed statistics for the quantum and QAOA comparisons
+- [ ] Multi-seed statistics for the VQC/kernel/QNN and QAOA comparisons (done for the quantum sequence models: 3 seeds)
 - [ ] Quantum hardware run (optional by design)

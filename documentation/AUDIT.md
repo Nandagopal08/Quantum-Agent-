@@ -1,5 +1,9 @@
 # Phase 1 — Project audit (2026-11-06)
 
+> Historical record. Since this audit the Colab notebooks it mentions were replaced by Python scripts
+> (`scripts/*.py`, entry point `scripts/run_pipeline.py`); the project contains no notebooks. See
+> [INSTALLATION_AND_EXECUTION.md](INSTALLATION_AND_EXECUTION.md).
+
 Scope inspected: every file in the project folder, the local toolchain, network access to the two
 NASA datasets, and the storage layer's behaviour against the real C-MAPSS archive.
 

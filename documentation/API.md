@@ -80,3 +80,16 @@ Generated from the FastAPI OpenAPI schema by `scripts/generate_docs.py`. Interac
 | GET | `/api/agents/runs/{run_id}/events` | Run Events |
 | POST | `/api/agents/runs/{run_id}/approval` | Approve |
 | POST | `/api/agents/ask` | Ask Question |
+
+## quantum sequence models
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/api/qseq/models` | Models |
+| POST | `/api/qseq/benchmark` | Benchmark |
+| GET | `/api/qseq/report` | Report |
+| GET | `/api/qseq/agents/specs` | Specs |
+| POST | `/api/qseq/agents/runs` | Start Run |
+| GET | `/api/qseq/agents/runs` | Runs |
+| GET | `/api/qseq/agents/runs/{run_id}` | Run |
+| GET | `/api/qseq/agents/runs/{run_id}/events` | Run Events |

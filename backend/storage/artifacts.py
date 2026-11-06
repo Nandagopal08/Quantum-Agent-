@@ -9,6 +9,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import shutil
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -24,10 +25,57 @@ def model_dir(category: str, name: str) -> Path:
     return paths.models(category) / name
 
 
+HISTORY_KEEP = 5                         # previous versions kept per report / model
+HISTORY_AREAS = {"comparison_reports"}   # result areas whose files are versioned on overwrite
+
+
+_STAMP_SEQ = [0]
+
+
+def _stamp() -> str:
+    """Sortable, unique version stamp: microsecond wall-clock time plus a per-process counter."""
+    from datetime import datetime
+
+    _STAMP_SEQ[0] += 1
+    return datetime.now().strftime("%Y%m%d_%H%M%S_%f") + f"_{_STAMP_SEQ[0]:06d}"
+
+
+def _prune(folder: Path, keep: int = HISTORY_KEEP) -> None:
+    entries = sorted(folder.iterdir(), key=lambda p: p.name)
+    for old in entries[:-keep] if len(entries) > keep else []:
+        shutil.rmtree(old) if old.is_dir() else old.unlink(missing_ok=True)
+
+
+def archive_existing_file(path: Path) -> Path | None:
+    """Move ``path`` to ``<dir>/_history/<stem>/<timestamp><suffix>`` before it is overwritten."""
+    if not path.is_file():
+        return None
+    target = path.parent / "_history" / path.stem / f"{_stamp()}{path.suffix}"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(path, target)
+    _prune(target.parent)
+    return target
+
+
+def archive_existing_model(category: str, name: str) -> Path | None:
+    """Copy a saved model folder to ``models/<category>/_history/<name>/<timestamp>/`` before overwriting it."""
+    src = model_dir(category, name)
+    if not (src / "model_info.json").is_file():
+        return None
+    target = paths.models(category) / "_history" / name / _stamp()
+    shutil.copytree(src, target)
+    _prune(target.parent)
+    return target
+
+
 def save_model(model: Any, category: str, name: str, config: Mapping | None = None,
-               metrics: Mapping | None = None, serializer: str = "auto") -> Path:
-    """Save a trained model (classical, quantum or agentic) plus its config and metrics."""
+               metrics: Mapping | None = None, serializer: str = "auto", keep_history: bool = True) -> Path:
+    """Save a trained model (classical, quantum or agentic) plus its config and metrics. The previous version, if
+    any, is kept under ``models/<category>/_history/<name>/`` (last 5)."""
     require_drive()
+    if keep_history:
+        with drive_guard(f"Archiving previous model {category}/{name}"):
+            archive_existing_model(category, name)
     fmt = resolve_format(serializer)
     filename = "model.pt" if fmt == "torch" else "model.pkl"
     local = local_scratch_dir("models", category, name) / filename
@@ -142,7 +190,11 @@ def save_result(area: str, name: str, data: Any) -> Path:
     require_drive()
     if hasattr(data, "to_csv"):
         return save_dataframe(data, paths.area(area) / name)
-    return write_json(paths.area(area) / f"{name}.json", data)
+    target = paths.area(area) / f"{name}.json"
+    if area in HISTORY_AREAS:
+        with drive_guard(f"Archiving previous {target.name}"):
+            archive_existing_file(target)      # never silently lose an earlier report
+    return write_json(target, data)
 
 
 def save_metrics(run_name: str, metrics: Mapping) -> Path:

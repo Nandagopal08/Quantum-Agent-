@@ -1,152 +1,169 @@
-# How to run the project — step by step
+# How to run the project, step by step
 
-There are two ways to run the project:
+Everything runs from **Python scripts** in `scripts/`. There are no notebooks. In Google Colab, the notebook
+page is only a terminal for running those scripts.
 
-- **Option A — Google Colab + Google Drive.** Recommended. Your datasets, models and results are saved in
-  Google Drive.
-- **Option B — your own computer.** Good for testing. Data is saved in a local folder, not Google Drive.
+There are two ways to run it:
+
+- **Option A: Google Colab + Google Drive** (recommended). Datasets, models and results are saved in Google Drive.
+- **Option B: your own computer.** Data is saved in Google Drive for desktop, or in a local test folder.
+
+| Script | What it does | Time (CPU) |
+|---|---|---|
+| `scripts/setup_environment.py` | Installs dependencies, mounts Drive, creates the folders, checks the stack | 2–5 min |
+| `scripts/download_datasets.py` | Downloads, verifies and extracts C-MAPSS (12 MB) and IMS (1.07 GB); resumable | 1–10 min |
+| `scripts/preprocess_datasets.py` | C-MAPSS preprocessing and EDA; IMS feature extraction | ~5 min |
+| `scripts/train_all_models.py` | 8 RUL models and the IMS anomaly detectors; resumes from checkpoints | ~15 min |
+| `scripts/run_quantum_experiments.py` | VQC, quantum kernel, QNN; Quantum LSTM / Transformer / CNN-LSTM with missing data; Qiskit check | 20–70 min |
+| `scripts/run_digital_twin.py` | Simulates future operation of engines and bearings | < 1 min |
+| `scripts/run_optimization.py` | QAOA vs MILP, greedy and annealing maintenance schedules | < 1 min |
+| `scripts/run_agent_workflow.py` | LangGraph agents: the seven-agent maintenance workflow, or the single missing-data agent | < 1 min |
+| `scripts/evaluate_all.py` | SHAP and other explanations; writes `RESULTS.md` to `<project>/reports/docs/` (`--publish-docs` → `documentation/`) | ~2 min |
+| `scripts/verify_results.py` | Recomputes every quantum-sequence metric (incl. the accuracy table) from the raw predictions and `RUL_FD001.txt`, and re-runs every seed's saved models | ~10 min |
+| `scripts/validate_colab_drive.py` | Checks Google Drive persistence for real (two phases around a runtime restart) | ~1 min |
+| `scripts/run_tests.py` | Backend (pytest) and frontend (vitest) tests | ~1 min |
+| **`scripts/run_pipeline.py`** | **All of the above in order (environment check first, result verification last); skips steps already done** | ~3–4 h (CPU) |
+| `scripts/run_backend.py` | Starts the API and dashboard (`--tunnel` for Colab) | — |
+
+Every script has `--help`, and they all accept `--storage-mode`, `--drive-root`, `--drive-mount`, `--log-level`,
+`--log-file` and `--summary-json`. Logs are also written to `<project>/reports/logs/<script>.log`.
 
 ---
 
-## Option A — Google Colab + Google Drive
+## Option A: Google Colab + Google Drive
 
 ### What you need
 
-- A Google account with about **10 GB free** in Google Drive (the bearing dataset is large).
+- A Google account with about **10 GB free** in Google Drive.
 - This project folder on your computer.
 
-### Step 1 — Build the code package (on your computer)
-
-Open a terminal in VS Code (**Terminal → New Terminal**) and run:
+### Step 1: package the code (on your computer)
 
 ```bash
-cd "/Users/nandagopal/Desktop/untitled folder 5"
-scripts/make_colab_bundle.sh
+cd "/Users/nandagopal/Desktop/ISI Project"
+python scripts/make_colab_bundle.py          # → dist/qadt_code.zip
 ```
 
-This creates **`dist/qadt_code.zip`**. Run it again whenever you change the code.
+Upload `dist/qadt_code.zip` to **My Drive** (drag it into drive.google.com). Repeat this whenever you change
+the code.
 
-### Step 2 — Set up storage and download the datasets (Colab)
+### Step 2: run the scripts in Colab
 
-1. Go to <https://colab.research.google.com>.
-2. Click **File → Upload notebook** and choose `notebooks/00_storage_setup.ipynb`.
-3. Click **Runtime → Run all**.
-4. When asked, **allow access to Google Drive**.
-5. When a **Choose Files** button appears, select `dist/qadt_code.zip`. You only do this once; the code is
-   saved to `MyDrive/Quantum_Agentic_Digital_Twin_code/`.
-6. Wait for the downloads to finish. C-MAPSS is 12 MB and takes seconds. IMS bearings is 1.07 GB and takes a
-   few minutes.
+Open <https://colab.research.google.com>, create an empty notebook, and type these commands into cells.
+The notebook is only the terminal; all the work happens in the `.py` files.
 
-When it finishes, both datasets show `ready=True` and a storage summary appears. Everything is now in
-`MyDrive/Quantum_Agentic_Digital_Twin/`.
+```python
+# 1. mount Google Drive and unpack the code into Drive (first session, or after re-uploading the zip)
+from google.colab import drive; drive.mount('/content/drive')
+!unzip -oq /content/drive/MyDrive/qadt_code.zip -d /content/drive/MyDrive/Quantum_Agentic_Digital_Twin_code
+%cd /content/drive/MyDrive/Quantum_Agentic_Digital_Twin_code
+```
 
-> If a download is interrupted, run the cell again. It continues from where it stopped and never downloads a
-> dataset that is already in Drive.
+```python
+# 2. install dependencies and create the project folders in Drive
+!python scripts/setup_environment.py
+```
 
-### Step 3 — Train the models (Colab)
+```python
+# 3. the whole workflow: datasets → training → quantum → twin → QAOA → agents → evaluation
+!python scripts/run_pipeline.py
+```
 
-1. **File → Upload notebook** → `notebooks/02_train_and_evaluate_colab.ipynb`.
-2. **Runtime → Run all** and allow Drive access.
+If Colab disconnects, run cells 1 and 3 again. The pipeline skips the steps it already finished, and training
+continues from the last checkpoint saved in Drive. To run only some steps:
 
-This trains all the models, runs the quantum experiments, the explanations and an optimisation run. It takes
-roughly 30–60 minutes. Everything is saved to Drive. If Colab disconnects, run it again: training continues
-from the last saved checkpoint.
+```python
+!python scripts/run_pipeline.py --steps sequence,agents
+!python scripts/run_quantum_experiments.py --suite sequence --seeds 42,43,44
+```
 
-### Step 4 — Open the dashboard (Colab)
+### Step 3: open the dashboard
 
-1. **File → Upload notebook** → `notebooks/01_run_backend_colab.ipynb`.
-2. **Runtime → Run all** and allow Drive access.
-3. At the end, the notebook prints a link like:
+```python
+!python scripts/run_backend.py --tunnel
+```
 
-   ```
-   https://something.trycloudflare.com/?token=abc123...
-   ```
+It prints a link like `https://something.trycloudflare.com/?token=abc123…`. Open it in your browser.
+**Keep the link private**, because the token protects the app: anyone with the full link has full access. With a
+token, the API docs (`/docs`) are switched off, every `/api` call needs the token, and the dashboard removes the
+token from the address bar after reading it. The dashboard works while this cell is running.
 
-4. Open that link in your browser. That is the full dashboard.
-
-> **Keep the link private.** The token in it protects the app. The dashboard works only while this Colab
-> notebook is running; if Colab stops, run the notebook again for a new link.
-
-**Optional AI narratives:** in that notebook, set `USE_OLLAMA = True` in the Ollama cell before running.
-Without it everything still works; the agents write a standard, non-AI summary.
+Optional AI narratives: `!python scripts/run_backend.py --tunnel --ollama-model llama3.2:3b`. Without an LLM,
+everything still works and the agents write a standard summary.
 
 ---
 
-## Option B — Run on your own computer
+## Option B: your own computer
 
 ### What you need
 
-- Python 3.12 (`python3.12 --version`)
-- Node.js 18 or newer (`node --version`)
+- Python 3.12, and Node.js 18 or newer (only to rebuild the dashboard)
 - About 10 GB of free disk space
-- macOS only: Homebrew's OpenMP library (`brew install libomp`)
+- macOS only: `brew install libomp`
 
-### Step 1 — Install (one time)
+### Step 1: install (one time)
 
 ```bash
-cd "/Users/nandagopal/Desktop/untitled folder 5"
+cd "/Users/nandagopal/Desktop/ISI Project"
 python3.12 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-scripts/fix_macos_openmp.sh            # macOS only — prevents crashes between PyTorch and XGBoost
+.venv/bin/python scripts/setup_environment.py --storage-mode development --drive-root ./.dev_storage
 cd frontend && npm install && npx vite build && cd ..
 ```
 
-### Step 2 — Choose where data is stored
+`setup_environment.py` installs `requirements.txt` and, on macOS, applies the OpenMP fix (`scripts/fix_macos_openmp.py`).
 
-Run this in every new terminal window before the commands below:
+> If a `.venv` folder is moved after creation, its launchers (`pip`, `uvicorn`, …) keep the old path. The project's
+> `.venv` was repaired on 2026-11-06 (launcher paths rewritten, nothing reinstalled). `.venv/bin/python -m pip …`
+> always works regardless.
 
-```bash
-export QADT_STORAGE_MODE=development QADT_DRIVE_ROOT="$PWD/.dev_storage"
-```
+### Step 2: choose where data is stored
 
-This saves data in the `.dev_storage/` folder. It is **not** Google Drive, and the dashboard shows a yellow
-warning banner to remind you.
-
-If you have **Google Drive for desktop** installed, use this instead to save directly into your Drive:
+Run this in every new terminal, or copy `.env.example` to `.env` and export it:
 
 ```bash
+export QADT_STORAGE_MODE=development QADT_DRIVE_ROOT="$PWD/.dev_storage"      # local test folder (not Drive)
+# or, with Google Drive for desktop:
 export QADT_STORAGE_MODE=desktop QADT_DRIVE_MOUNT=~/Library/CloudStorage/GoogleDrive-<your-email>
 ```
 
-### Step 3 — Download the datasets
+Development mode is clearly marked: the dashboard shows a yellow banner on every page.
+
+### Step 3: run
 
 ```bash
-.venv/bin/python -m backend.storage download
+.venv/bin/python scripts/run_pipeline.py                    # everything (or the individual scripts above)
+.venv/bin/python scripts/run_backend.py                     # → http://localhost:8000
 ```
 
-### Step 4 — Train the models
+Some useful single runs:
 
 ```bash
-.venv/bin/python scripts/train_all_rul.py FD001      # engine models (about 5 minutes)
-.venv/bin/python scripts/train_all_anomaly.py        # bearing models (about 5 minutes)
+.venv/bin/python scripts/run_quantum_seq.py FD001 --seeds 42,43,44        # quantum sequence models + missing data (~35–80 min)
+.venv/bin/python scripts/verify_results.py                                # recompute and check every reported number
+.venv/bin/python scripts/run_quantum_experiments.py --suite qiskit        # Qiskit vs PennyLane check of the saved models
+.venv/bin/python scripts/run_agent_workflow.py missing-data --asset FD001-test-unit34 --missing-rate 0.4 --pattern block
+.venv/bin/python scripts/run_agent_workflow.py maintenance --n-assets 5 --decision approve
+.venv/bin/python scripts/generate_docs.py --publish                       # write the verified numbers into documentation/RESULTS.md
+.venv/bin/python scripts/run_pipeline.py --profile quick --restart         # 10–15 min pipeline check
 ```
-
-### Step 5 — Start the app
-
-```bash
-.venv/bin/uvicorn backend.main:app --port 8000
-```
-
-Open **<http://localhost:8000>** in your browser. Press `Ctrl+C` in the terminal to stop.
-
-**Optional AI narratives:** in another terminal, run `ollama serve`, then `ollama pull llama3.1`. Then set the
-model to `llama3.1` in **System Settings** in the dashboard.
 
 ---
 
 ## Using the dashboard
 
-A suggested order for a first look:
-
-1. **Dataset Management** — check both datasets show **Ready**.
-2. **Model Training** — see the trained models and their scores, or train new ones.
-3. **Predictive Maintenance** — the risk of every engine and bearing.
-4. **Digital Twin** — replay an engine's history and simulate its future.
-5. **Counterfactual Analysis** — compare maintenance options and their costs.
-6. **Agentic AI Control Center** — click **Run agents**, watch the steps live, then approve or reject the
-   maintenance plan.
-7. **Research Evaluation** — all result tables in one place.
-8. **System Settings** — change costs and risk thresholds. The defaults are examples only.
+1. **Dataset Management**: check that both datasets show **Ready**.
+2. **Model Training**: trained models and their scores.
+3. **Predictive Maintenance**: the risk for every engine and bearing.
+4. **Quantum AI Laboratory**: VQC, quantum kernel and QNN against classical baselines.
+5. **Quantum Sequence Lab**: Quantum LSTM / Transformer / CNN-LSTM against classical twins. It shows the RUL
+   error table, the **accuracy table** ("fails within 30 cycles": accuracy, precision, recall, F1, ROC-AUC,
+   share within ±10/±20 cycles), paired statistics, the Qiskit cross-check, imputation error against missing
+   rate, downstream RUL, and the **missing-data agent**: choose an engine, a missing rate and a pattern, then
+   click *Run agents* to see its steps live (data quality → plan → impute → check, retrying the next-best imputer
+   when the check rejects one → forecast → report).
+6. **Digital Twin**, **Counterfactual Analysis**, **Maintenance Optimization**.
+7. **Agentic AI Control Center**: the seven-agent maintenance workflow with human approval.
+8. **Research Evaluation** and **System Settings**.
 
 ---
 
@@ -154,21 +171,51 @@ A suggested order for a first look:
 
 | Problem | Fix |
 |---|---|
-| Colab: `No module named 'backend'` | Run Step 2 of Option A first, so the code is installed in Drive. |
-| `Google Drive is not mounted` | Run the first cell of the notebook (`drive.mount(...)`) and allow access. |
-| `Transport endpoint is not connected` | Drive disconnected. Run `from backend.storage import remount_drive; remount_drive()` and re-run the cell. |
-| Dashboard says a model has not been trained | Run Step 3 (Option A) or Step 4 (Option B). |
-| Dashboard link stopped working | The Colab notebook stopped. Run `01_run_backend_colab.ipynb` again for a new link. |
-| macOS: Python crashes with `exit code 139` | Run `scripts/fix_macos_openmp.sh`. |
-| `Cannot reach the backend` in the dashboard | The server is not running. Start it (Option A Step 4 or Option B Step 5). |
+| Colab: `No module named 'backend'` | Run the `%cd /content/drive/MyDrive/Quantum_Agentic_Digital_Twin_code` line (Step 2, cell 1). |
+| `Google Drive is not mounted` | Run `from google.colab import drive; drive.mount('/content/drive')`, or `%run scripts/setup_environment.py`. |
+| `Transport endpoint is not connected` | Drive disconnected. Run cell 1 again, then re-run the script; it resumes. |
+| Exit code 3, "missing prerequisite" | An earlier step hasn't run yet; run `scripts/run_pipeline.py`, which runs the steps in order. |
+| Dashboard link stopped working | The `run_backend.py` cell stopped. Run it again for a new link. |
+| macOS: crash with `exit code 139` | `python scripts/fix_macos_openmp.py` |
+| `Cannot reach the backend` | Start `scripts/run_backend.py`. |
 
----
+## Validate Google Drive persistence (Colab)
 
-## Check that everything works (optional)
+This has **not** been run on real Colab/Drive by the developers; please run it once and keep the report.
 
-```bash
-.venv/bin/python -m pytest backend/tests -q     # expected: 40 passed
-cd frontend && npx vitest run                    # expected: 17 passed
+```python
+# session 1
+from google.colab import drive; drive.mount('/content/drive')
+%cd /content/drive/MyDrive/Quantum_Agentic_Digital_Twin_code
+!python scripts/validate_colab_drive.py --phase write
 ```
 
-More detail: [documentation/INSTALLATION_AND_EXECUTION.md](documentation/INSTALLATION_AND_EXECUTION.md)
+Then **Runtime ▸ Disconnect and delete runtime**, reconnect (a fresh VM), and:
+
+```python
+# session 2
+from google.colab import drive; drive.mount('/content/drive')
+%cd /content/drive/MyDrive/Quantum_Agentic_Digital_Twin_code
+!python scripts/validate_colab_drive.py --phase verify
+```
+
+Both must end with `PASSED`. The reports are in `MyDrive/Quantum_Agentic_Digital_Twin/reports/drive_validation_*.json`.
+Also check: `!python scripts/run_pipeline.py` twice in a row — the second run must say "already completed,
+skipping" for every finished step.
+
+## What the results mean
+
+The verified numbers, with their source, seed count and evaluation set, are in
+[documentation/FINAL_VERIFIED_RESULTS.md](documentation/FINAL_VERIFIED_RESULTS.md), and the caveats are in
+[documentation/FINAL_RESEARCH_LIMITATIONS.md](documentation/FINAL_RESEARCH_LIMITATIONS.md). In short, no quantum model
+is significantly better than its classical twin, and no quantum advantage is claimed.
+
+`scripts/evaluate_all.py` and `scripts/run_pipeline.py` write generated documents to `<project>/reports/docs/`.
+Only `generate_docs.py --publish` (or `--publish-docs`) changes `documentation/RESULTS.md`, so a quick or test run can
+never overwrite the published, verified numbers.
+
+## Check that everything works
+
+```bash
+.venv/bin/python scripts/run_tests.py        # backend: 86 passed · frontend: 19 passed
+```

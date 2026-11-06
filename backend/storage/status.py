@@ -1,7 +1,7 @@
 """Storage management page: dataset sizes, files, model checkpoints and paths.
 
-In Colab: ``show_storage_page()`` renders it in the notebook and saves a copy to
-``reports/storage_status.html``. From a terminal: ``python -m backend.storage status``.
+From a terminal: ``python -m backend.storage status`` prints it; ``save_storage_page()`` also writes an HTML
+copy to ``reports/storage_status.html``. The dashboard's Storage Management page shows the same report.
 """
 
 from __future__ import annotations
@@ -225,30 +225,18 @@ def render_error_html(message: str) -> str:
             f"<span class='bad'>Google Drive is not available</span><pre>{_e(message)}</pre></div></div>")
 
 
-def show_storage_page(save: bool = True) -> dict | None:
-    """Render the storage page in the notebook. Shows mounting instructions if Drive is missing."""
-    try:
-        from IPython.display import HTML, display
-    except ImportError:
-        display = None
-
+def save_storage_page(save: bool = True) -> dict | None:
+    """Print the storage report and write an HTML copy to ``reports/storage_status.html``.
+    Prints the mounting instructions instead when Drive is missing."""
     try:
         report = storage_report()
     except DriveNotMountedError as exc:
-        if display:
-            display(HTML(render_error_html(str(exc))))
-        else:
-            print(exc)
+        print(exc)
         return None
-
-    page = render_html(report)
     if save:
         write_text(paths.reports / "storage_status.html",
-                   f"<!doctype html><meta charset='utf-8'><title>Project storage</title>{page}")
-    if display:
-        display(HTML(page))
-    else:
-        print(format_text(report))
+                   f"<!doctype html><meta charset='utf-8'><title>Project storage</title>{render_html(report)}")
+    print(format_text(report))
     return report
 
 

@@ -44,26 +44,46 @@ def download(name: str, force: bool = False):
     return jobs.submit("dataset_download", {"dataset": name, "force": force}, work, heavy=False)
 
 
+MAX_UPLOAD_BYTES = int(os.environ.get("QADT_MAX_UPLOAD_BYTES", 2 << 30))   # 2 GiB; the IMS archive is 1.07 GB
+
+
 @router.post("/datasets/{name}/upload")
-async def upload(name: str, file: UploadFile = File(...)):
-    """Upload the dataset ZIP from your computer instead of downloading it (same verification applies)."""
+async def upload(name: str, file: UploadFile = File(...), allow_unofficial: bool = False):
+    """Upload the dataset ZIP from your computer instead of downloading it. The file must be a valid ZIP of at most
+    QADT_MAX_UPLOAD_BYTES and, unless ``allow_unofficial``, byte-identical (SHA-256) to the official NASA archive.
+    The previously stored archive is kept as ``<name>.previous.zip``."""
     if name not in DATASETS:
         raise HTTPException(404, f"unknown dataset {name}")
     require_drive()
     target = archive_path(name)
     part = target.with_name(target.name + ".upload")
     target.parent.mkdir(parents=True, exist_ok=True)
+    size = 0
     with open(part, "wb") as fh:
         while chunk := await file.read(8 << 20):
+            size += len(chunk)
+            if size > MAX_UPLOAD_BYTES:
+                fh.close()
+                part.unlink(missing_ok=True)
+                raise HTTPException(413, f"upload larger than {MAX_UPLOAD_BYTES / 1e9:.1f} GB")
             fh.write(chunk)
     ok, reason = verify_zip(part, deep=True)
     if not ok:
         part.unlink(missing_ok=True)
         raise HTTPException(422, f"uploaded file failed ZIP verification: {reason}")
+    digest = sha256_file(part)
+    expected = DATASETS[name].sha256
+    if expected and digest != expected and not allow_unofficial:
+        part.unlink(missing_ok=True)
+        raise HTTPException(422, "uploaded archive is not the official NASA file (SHA-256 mismatch); "
+                                 "pass allow_unofficial=true to use it anyway")
+    if target.exists():
+        os.replace(target, target.with_name(target.stem + ".previous.zip"))
     os.replace(part, target)
     update_metadata(name, download_status="complete", download_date=utc_now(), file_size_bytes=target.stat().st_size,
-                    sha256=sha256_file(target), zip_verified=True, extraction_status="not_extracted",
-                    upload_filename=file.filename, error=None)
+                    sha256=digest, zip_verified=True, extraction_status="not_extracted",
+                    upload_filename=(file.filename or "")[:200], official_archive=(digest == expected) if expected else None,
+                    error=None)
 
     def work(progress):
         progress(0.1, "extracting uploaded archive")

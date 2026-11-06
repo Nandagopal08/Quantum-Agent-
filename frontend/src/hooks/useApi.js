@@ -51,7 +51,7 @@ export function useEventSource(url, onEvent, deps = []) {
       try { handler.current(JSON.parse(e.data)); } catch { /* ignore keep-alives */ }
     };
     ["message", "job_progress", "job_status", "agent_start", "agent_end", "tool_call", "tool_result", "tool_error",
-      "route", "run_status", "approval_required", "approval_received"].forEach((t) => es.addEventListener(t, listener));
+      "route", "run_status", "approval_required", "approval_received", "agent_step"].forEach((t) => es.addEventListener(t, listener));
     return () => es.close();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [url, ...deps]);

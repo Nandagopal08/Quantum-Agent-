@@ -8,7 +8,6 @@ checkpointer; if the API restarts, they are marked ``expired`` and must be re-ru
 from __future__ import annotations
 
 import logging
-import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 
@@ -25,7 +24,6 @@ from .llm import llm_status
 log = logging.getLogger("qadt.agents")
 _graph = build_graph()
 _pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="agent-run")
-_lock = threading.Lock()
 
 
 def _config(run_id: str) -> dict:

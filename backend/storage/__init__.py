@@ -1,11 +1,11 @@
 """Google Drive-backed persistent storage for the whole project.
 
-Start every Colab session with::
+Used by every script in ``scripts/`` (see ``scripts/setup_environment.py`` and ``scripts/run_pipeline.py``)::
 
-    from backend.storage import setup_storage, prepare_datasets, show_storage_page
-    paths = setup_storage()          # mounts Drive, creates the folder tree
+    from backend.storage import setup_storage, prepare_datasets, save_storage_page
+    paths = setup_storage()          # mounts Drive (Colab / Drive for desktop), creates the folder tree
     prepare_datasets()               # downloads/extracts only what is missing
-    show_storage_page()
+    save_storage_page()              # prints the storage report, writes reports/storage_status.html
 """
 
 from .artifacts import (
@@ -55,7 +55,7 @@ from .drive import (
     setup_storage,
 )
 from .paths import ProjectPaths, paths
-from .status import show_storage_page, storage_report
+from .status import save_storage_page, storage_report
 
 __all__ = [
     "CheckpointManager",
@@ -98,7 +98,7 @@ __all__ = [
     "save_result",
     "save_splits",
     "setup_storage",
-    "show_storage_page",
+    "save_storage_page",
     "storage_report",
     "verify_dataset",
     "verify_zip",

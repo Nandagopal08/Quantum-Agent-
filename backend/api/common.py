@@ -17,12 +17,25 @@ from ..storage.fileio import read_json
 log = logging.getLogger("qadt.api")
 
 
+def redact(message: str) -> str:
+    """Replace absolute storage locations in client-facing messages with placeholders."""
+    from ..config import get_config
+
+    cfg = get_config()
+    for path, label in ((cfg.project_root, "<project>"), (cfg.local_scratch, "<scratch>"), (cfg.drive_mount, "<drive>")):
+        for variant in {str(path), str(path.expanduser().resolve()) if path else ""}:
+            if variant and len(variant) > 1:
+                message = message.replace(variant, label)
+    return message
+
+
 def install_error_handlers(app: FastAPI) -> None:
     def handler(status: int, code: str):
         async def h(_req: Request, exc: Exception):
             if status >= 500:
                 log.error("%s: %s", code, exc)
-            return JSONResponse(status_code=status, content={"error": code, "detail": str(exc)})
+            detail = str(exc) if code == "drive_not_mounted" else redact(str(exc))   # mount help names the mount point
+            return JSONResponse(status_code=status, content={"error": code, "detail": detail})
         return h
 
     app.add_exception_handler(DriveNotMountedError, handler(503, "drive_not_mounted"))

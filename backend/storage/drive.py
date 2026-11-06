@@ -25,32 +25,25 @@ T = TypeVar("T")
 MOUNT_INSTRUCTIONS = """\
 Google Drive is not mounted, so nothing can be downloaded, trained or saved.
 
-To mount it, run this in a Colab cell (not with `!python`, it must run in the notebook kernel):
+Google Colab (mounting must happen in the Colab kernel, so use %run rather than !python):
 
-    from google.colab import drive
-    drive.mount('/content/drive')
+    %run scripts/setup_environment.py
 
-or, using this project:
+or the one-line Colab command, then re-run the script that failed:
 
-    from backend.storage import setup_storage
-    paths = setup_storage()
+    from google.colab import drive; drive.mount('/content/drive')
 
-Approve the Google account access prompt, then re-run the cell that failed."""
+On a computer with Google Drive for desktop:
+
+    python scripts/setup_environment.py --storage-mode desktop --drive-mount ~/Library/CloudStorage/GoogleDrive-<account>"""
 
 RECONNECT_INSTRUCTIONS = """\
 The connection to Google Drive was lost (the Drive FUSE mount stopped responding).
-Data already written to Drive is safe. To reconnect, run in a Colab cell:
+Data already written to Drive is safe. To reconnect in Colab, run in the kernel:
 
-    from backend.storage import remount_drive
-    remount_drive()
+    from google.colab import drive; drive.flush_and_unmount(); drive.mount('/content/drive', force_remount=True)
 
-or manually:
-
-    from google.colab import drive
-    drive.flush_and_unmount()
-    drive.mount('/content/drive', force_remount=True)
-
-Then re-run the interrupted step. Downloads resume from the partial file and
+Then re-run the interrupted script (python scripts/run_pipeline.py resumes at the first incomplete step). Downloads resume from the partial file and
 training resumes from the latest checkpoint in Drive."""
 
 # errno values the Drive FUSE mount produces when it drops out underneath us.
@@ -212,7 +205,7 @@ def ensure_project_structure(config: StorageConfig | None = None) -> Path:
 def setup_storage(force_remount: bool = False) -> "ProjectPaths":
     """Mount Drive, create the folder tree and return the project paths.
 
-    This is the single entry point notebooks should call first.
+    Called by scripts/setup_environment.py and by every script through backend.workflows.
     """
     from .paths import ProjectPaths
 

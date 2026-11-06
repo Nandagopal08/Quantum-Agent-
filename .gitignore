@@ -2,8 +2,11 @@
 .dev_storage/
 node_modules/
 frontend/dist/
-dist/
 __pycache__/
 *.pyc
 .env
 dist/
+.DS_Store
+catboost_info/
+.pytest_cache/
+backups/

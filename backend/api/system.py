@@ -27,8 +27,12 @@ def _storage_info() -> dict:
 def health():
     import os
 
-    return {"status": "ok", "version": __version__, "storage": _storage_info(), "llm": llm_status(),
-            "auth_required": bool(os.environ.get("QADT_API_TOKEN"))}
+    storage = _storage_info()
+    if os.environ.get("QADT_API_TOKEN"):     # health is reachable without the token: reveal no file-system paths
+        storage = {k: storage[k] for k in ("mode", "is_google_drive", "mounted", "instructions")}
+    return {"status": "ok", "version": __version__, "storage": storage, "llm": llm_status(),
+            "auth_required": bool(os.environ.get("QADT_API_TOKEN")),
+            "ui_mode": "agent" if os.environ.get("QADT_UI_MODE", "").lower() == "agent" else "full"}
 
 
 @router.get("/overview")

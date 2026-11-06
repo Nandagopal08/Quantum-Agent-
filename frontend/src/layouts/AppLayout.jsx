@@ -2,7 +2,7 @@ import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import {
   Activity, Atom, BarChart3, Bot, BrainCircuit, Cpu, Database, FlaskConical, GitCompare, HardDrive, LayoutDashboard,
-  Lightbulb, Menu, Network, Settings, X,
+  Lightbulb, Menu, Network, Settings, Waves, X,
 } from "lucide-react";
 import { api } from "../services/api";
 import { useApi } from "../hooks/useApi";
@@ -15,6 +15,7 @@ export const NAV = [
   { to: "/training", label: "Model Training", icon: BrainCircuit },
   { to: "/predictive", label: "Predictive Maintenance", icon: Activity },
   { to: "/quantum", label: "Quantum AI Laboratory", icon: Atom },
+  { to: "/qseq", label: "Quantum Sequence Lab", icon: Waves },
   { to: "/twin", label: "Digital Twin", icon: Cpu },
   { to: "/agents", label: "Agentic AI Control Center", icon: Bot },
   { to: "/counterfactual", label: "Counterfactual Analysis", icon: GitCompare },
@@ -46,7 +47,7 @@ function StorageBanner({ health, error }) {
   if (!s.is_google_drive) {
     return (
       <div className="border-b border-amber-200 bg-amber-50 px-4 py-1.5 text-xs text-amber-900">
-        <b>Development storage mode:</b> data is saved to <code>{s.project_root}</code>, <b>not Google Drive</b>.
+        <b>Development storage mode:</b> data is saved to <code>{s.project_root || "a local folder"}</code>, <b>not Google Drive</b>.
         Use Colab or Drive for desktop for persistent research storage.
       </div>
     );

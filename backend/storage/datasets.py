@@ -43,6 +43,7 @@ class DatasetSpec:
     archive_name: str
     version: str
     citation: str
+    sha256: str | None = None          # SHA-256 of the official archive (uploads must match unless allowed)
 
 
 DATASETS: dict[str, DatasetSpec] = {
@@ -54,6 +55,7 @@ DATASETS: dict[str, DatasetSpec] = {
         version="NASA PCoE Data Set 6 (2008)",
         citation="A. Saxena and K. Goebel (2008). Turbofan Engine Degradation Simulation Data Set, "
         "NASA Prognostics Data Repository, NASA Ames Research Center.",
+        sha256="c9c5dec12a945a82e8bb4446589d7fb3cc057b5e5d81fa1a12e25ee9912ad3b2",
     ),
     "ims_bearings": DatasetSpec(
         name="ims_bearings",
@@ -63,6 +65,7 @@ DATASETS: dict[str, DatasetSpec] = {
         version="NASA PCoE Data Set 4 (2007)",
         citation="J. Lee, H. Qiu, G. Yu, J. Lin, and Rexnord Technical Services (2007). IMS, "
         "University of Cincinnati. Bearing Data Set, NASA Prognostics Data Repository.",
+        sha256="21001ac266c465f5d345ec42d7b508c6a6328487fd9d4d7774422dd5ea10ad83",
     ),
 }
 
@@ -352,11 +355,18 @@ def _safe_target(dest: Path, member: str) -> Path:
     return target
 
 
+MAX_EXTRACT_BYTES = int(os.environ.get("QADT_MAX_EXTRACT_BYTES", 20 << 30))   # zip-bomb guard (default 20 GiB)
+
+
 def _extract_zip(zip_path: Path, dest: Path) -> int:
     """Extract with path-traversal protection; members already present at full size are skipped,
     so an interrupted extraction picks up where it stopped."""
     written = 0
     with zipfile.ZipFile(zip_path) as zf:
+        total = sum(i.file_size for i in zf.infolist())
+        if total > MAX_EXTRACT_BYTES:
+            raise DatasetIntegrityError(f"{zip_path.name} would extract {total / 1e9:.1f} GB, above the "
+                                        f"{MAX_EXTRACT_BYTES / 1e9:.1f} GB limit (QADT_MAX_EXTRACT_BYTES)")
         for info in zf.infolist():
             target = _safe_target(dest, info.filename)
             if info.is_dir():

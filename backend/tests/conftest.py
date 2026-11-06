@@ -67,6 +67,23 @@ def _ims_zip(rng: np.random.Generator, n_files: int = 80, n: int = 2048) -> byte
     return out.getvalue()
 
 
+_ACTIVE_PROJECT: dict = {}
+
+
+@pytest.fixture(autouse=True)
+def _isolate_storage_config(request):
+    """Storage tests configure their own roots and expect the environment defaults; the other tests share
+    the session project. Give each kind the config it expects so test order does not matter."""
+    from backend import config
+
+    uses_project = "project" in request.fixturenames
+    if _ACTIVE_PROJECT and not uses_project:
+        config.reset_config()
+    yield
+    if _ACTIVE_PROJECT:
+        config.configure(**_ACTIVE_PROJECT)
+
+
 @pytest.fixture(scope="session")
 def project(tmp_path_factory):
     from backend import config
@@ -74,7 +91,8 @@ def project(tmp_path_factory):
     from backend.storage.drive import ensure_project_structure
 
     root = tmp_path_factory.mktemp("qadt_project")
-    config.configure(project_root=root, storage_mode="development", local_scratch=root / "_scratch")
+    _ACTIVE_PROJECT.update(project_root=root, storage_mode="development", local_scratch=root / "_scratch")
+    config.configure(**_ACTIVE_PROJECT)
     ensure_project_structure()
     rng = np.random.default_rng(0)
     for name, payload in (("cmapss", _cmapss_zip(rng)), ("ims_bearings", _ims_zip(rng))):
@@ -84,4 +102,5 @@ def project(tmp_path_factory):
     reports = prepare_datasets()
     assert all(r["ready"] for r in reports.values()), reports
     yield root
+    _ACTIVE_PROJECT.clear()
     config.reset_config()
